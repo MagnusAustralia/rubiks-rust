@@ -3,6 +3,7 @@ use std::io::{self, Write};
 use colored::{Colorize, ColoredString};
 
 pub mod scramble_generator;
+pub mod depth_first_search;
 
 pub struct RubiksCube {
     state: [[u8; 8]; 6]
@@ -34,7 +35,7 @@ impl Faces {
     }
 }
 
-trait Puzzel {
+trait Puzzle {
     fn new() -> Self;
     fn is_solved(&self) -> bool;
     fn rotate(&mut self, face:Faces, magnitude: u32);
@@ -70,7 +71,7 @@ trait Puzzel {
     }
 }
 
-impl Puzzel for RubiksCube {
+impl Puzzle for RubiksCube {
     fn new() -> Self {
         Self {
             state: [[0u8; 8], [1u8; 8], [2u8; 8], [3u8; 8], [4u8; 8], [5u8; 8]],
@@ -142,7 +143,7 @@ impl Puzzel for RubiksCube {
     }
 }
 
-impl Puzzel for RubiksCube2x2 {
+impl Puzzle for RubiksCube2x2 {
     fn new() -> Self {
         Self {
             state: [[0u8; 4], [1u8; 4], [2u8; 4], [3u8; 4], [4u8; 4], [5u8; 4]],
@@ -156,21 +157,21 @@ impl Puzzel for RubiksCube2x2 {
     fn rotate(&mut self, face: Faces, magnitude: u32) {
         let tiles = &mut self.state[face.to_number()];
         let rotation = (magnitude % 8) as usize;
-        tiles.rotate_right(rotation * 2);
+        tiles.rotate_right(rotation);
 
         let adjacent = match face {
             Faces::White => [(3, [0, 1]), (4, [0, 1]), (1, [0, 1]), (2, [0, 1])],
-            Faces::Blue => [(0, [2, 3]), (4, [2, 3]), (5, [0, 1]), (2, [3, 0])],
+            Faces::Blue => [(0, [2, 3]), (4, [1, 2]), (5, [0, 1]), (2, [3, 0])],
             Faces::Orange => [(0, [1, 2]), (1, [1, 2]), (5, [1, 2]), (3, [3, 0])],
-            Faces::Green => [(0, [0, 1]), (2, [1, 2]), (5, [3, 4]), (4, [3, 0])],
-            Faces::Red => [(0, [4, 0]), (3, [1, 2]), (5, [3, 0]), (1, [3, 0])],
-            Faces::Yellow => [(1, [3, 4]), (4, [3, 4]), (3, [3, 4]), (2, [3, 4])]
+            Faces::Green => [(0, [0, 1]), (2, [1, 2]), (5, [2, 3]), (4, [3, 0])],
+            Faces::Red => [(0, [3, 0]), (3, [1, 2]), (5, [3, 0]), (1, [3, 0])],
+            Faces::Yellow => [(1, [2, 3]), (4, [2, 3]), (3, [2, 3]), (2, [2, 3])]
         };
 
-        let mut adjacent_cubies = [[0u8; 3];4];
+        let mut adjacent_cubies = [[0u8; 2];4];
 
         for (i, x) in adjacent.iter().enumerate() {
-            let mut group_of_cubies = [0u8; 3];
+            let mut group_of_cubies = [0u8; 2];
             for (j, &k) in x.1.iter().enumerate() {
                 group_of_cubies[j] = self.state[x.0][k]
             }
@@ -188,10 +189,10 @@ impl Puzzel for RubiksCube2x2 {
 
     fn print(&self) {
         let mut print_state: Vec<Vec<ColoredString>> = vec![vec![" ".white(); 8]; 6];
-        let print_map: HashMap<_, _> = vec![((0, 0), (0, 2)), ((0, 1), (0, 3)), ((0, 2), (1, 3)), ((0, 3), (1, 2)), ((1, 0), (2, 2)), ((1, 1), (2, 3)), ((1, 2), (3, 3)), ((1, 3), (3, 2)), ((2, 0), (2, 4)), ((2, 1), (2, 5)), ((2, 2), (3, 5)), ((2, 3), (3, 4)), ((3, 0), (2, 6)), ((3, 1), (2, 7)), ((3, 2), (3, 7)), ((3, 3), (3, 6)), ((4, 0), (2, 0)), ((4, 1), (2, 1)), ((4, 2), (3, 1)), ((4, 3), (3, 0)), ((5, 0), (4, 2)), ((5, 1), (4, 3)), ((5, 2), (5, 2)), ((5, 3), (5, 3))].into_iter().collect();
+        let print_map: HashMap<_, _> = vec![((0, 0), (0, 2)), ((0, 1), (0, 3)), ((0, 2), (1, 3)), ((0, 3), (1, 2)), ((1, 0), (2, 2)), ((1, 1), (2, 3)), ((1, 2), (3, 3)), ((1, 3), (3, 2)), ((2, 0), (2, 4)), ((2, 1), (2, 5)), ((2, 2), (3, 5)), ((2, 3), (3, 4)), ((3, 0), (2, 6)), ((3, 1), (2, 7)), ((3, 2), (3, 7)), ((3, 3), (3, 6)), ((4, 0), (2, 0)), ((4, 1), (2, 1)), ((4, 2), (3, 1)), ((4, 3), (3, 0)), ((5, 0), (4, 2)), ((5, 1), (4, 3)), ((5, 2), (5, 3)), ((5, 3), (5, 2))].into_iter().collect();
 
         for i in 0..6 {
-            for j in 0..8 {
+            for j in 0..4 {
                 let (x, y) = print_map[&(i, j)];
                 print_state[x][y] = match self.state[i][j] {0 => "W".white(), 1 => "B".blue(), 2 => ColoredString::from(format!("\x1b[38;5;208m{}\x1b[0m", "O")), 3 => "G".green(), 4 => "R".red(), 5 => "Y".yellow(), _ => " ".white()}
             }
@@ -205,8 +206,48 @@ impl Puzzel for RubiksCube2x2 {
         }
     }
 }
-fn main() {
-    let mut cube: RubiksCube2x2 = Puzzel::new();
+
+pub enum PuzzleType {
+    RubiksCube(RubiksCube),
+    RubiksCube2x2(RubiksCube2x2),
+}
+
+impl PuzzleType {
+    fn is_solved(&self) -> bool {
+        match self {
+            PuzzleType::RubiksCube(cube) => cube.is_solved(),
+            PuzzleType::RubiksCube2x2(cube) => cube.is_solved(),
+        }
+    }
+
+    fn print(&self) {
+        match self {
+            PuzzleType::RubiksCube(cube) => cube.print(),
+            PuzzleType::RubiksCube2x2(cube) => cube.print(),
+        }
+    }
+
+    fn input_moves(&mut self, moves: &str) {
+        match self {
+            PuzzleType::RubiksCube(cube) => cube.input_moves(moves),
+            PuzzleType::RubiksCube2x2(cube) => cube.input_moves(moves),
+        }
+    }
+}
+
+pub fn main() {
+    let mut choice = String::new();
+    print!("Enter 2 for a 2x2 and 3 for a 3x3: ");
+    io::stdout().flush().unwrap();
+    io::stdin().read_line(&mut choice).expect("Failed to read choice");
+    choice = choice.trim().to_string();
+
+    let mut cube = if choice == "2" {
+        PuzzleType::RubiksCube2x2(RubiksCube2x2::new())
+    } else {
+        PuzzleType::RubiksCube(RubiksCube::new())
+    };
+
     let scramble = scramble_generator::main(50);
     println!("{scramble}");
     cube.input_moves(scramble.as_str());
