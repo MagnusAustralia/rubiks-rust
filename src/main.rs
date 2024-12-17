@@ -3,7 +3,7 @@ use std::io::{self, Write};
 use colored::{Colorize, ColoredString};
 
 pub mod scramble_generator;
-pub mod depth_first_search;
+// pub mod depth_first_search;
 
 pub struct RubiksCube {
     state: [[u8; 8]; 6]
@@ -13,6 +13,9 @@ pub struct RubiksCube2x2 {
     state: [[u8; 4]; 6]
 }
 
+pub struct Pyraminx {
+    state: [[u8; 9]; 4]
+}
 pub enum Faces {
     White,
     Blue,
@@ -207,9 +210,134 @@ impl Puzzle for RubiksCube2x2 {
     }
 }
 
+impl Puzzle for Pyraminx {
+    fn new() -> Self {
+        Self {
+            state: [[1u8; 9], [4u8; 9], [3u8; 9], [5u8; 9]],
+        }
+    }
+
+    fn is_solved(&self) -> bool {
+        self.state == [[1u8; 9], [4u8; 9], [3u8; 9], [5u8; 9]]
+    }
+
+    fn rotate(&mut self, face: Faces, magnitude: u32) {
+        let number = match face {
+            Faces::Blue => 0,
+            Faces::Red => 1,
+            Faces::Green => 2,
+            Faces::Yellow => 3,
+            _ => 4
+        };
+        let corners = [0, 4, 7];
+        let edges = [1, 2, 3, 5, 6, 8];
+        let rotation = (magnitude % 8) as usize;
+        let mut rotation_corners = [0u8;3];
+        let mut rotation_edges = [0u8;6];
+        
+        for (i, &piece) in corners.iter().enumerate() {
+            rotation_corners[i] = self.state[number][piece]
+        }
+        
+        rotation_corners.rotate_right(rotation);
+        
+        for (i, &piece) in corners.iter().enumerate() {
+            self.state[number][piece] = rotation_corners[i]
+        }
+
+        for (i, &piece) in edges.iter().enumerate() {
+            rotation_edges[i] = self.state[number][piece]
+        }
+        
+        rotation_edges.rotate_right(rotation * 2);
+        
+        for (i, &piece) in edges.iter().enumerate() {
+            self.state[number][piece] = rotation_edges[i]
+        }
+
+        let adjacent = match face {
+            Faces::Blue => [(2, [4, 3, 5, 6, 7]), (3, [0, 1, 2, 3, 4]), (1, [0, 1, 2, 3, 4])],
+            Faces::Red => [(0, [4, 3, 5, 6, 7]), (3, [4, 3, 5, 6, 7]), (2, [0, 1, 2, 3, 4])],
+            Faces::Green => [(1, [7, 6, 5, 3, 4]), (3, [1, 0, 8, 6, 7]), (0, [4, 3, 2, 1, 0])],
+            Faces::Yellow => [(0, [7, 6, 8, 0, 1]), (2, [7, 6, 8, 0, 1]), (1, [7, 6, 8, 0, 1])],
+            _ => [(10, [7, 6, 8, 0, 1]), (2, [7, 6, 8, 0, 1]), (1, [7, 6, 8, 0, 1])]
+        };
+
+        let mut adjacent_cubies = [[0u8; 5];3];
+
+        for (i, x) in adjacent.iter().enumerate() {
+            let mut group_of_cubies = [0u8; 5];
+            for (j, &k) in x.1.iter().enumerate() {
+                group_of_cubies[j] = self.state[x.0][k]
+            }
+            adjacent_cubies[i] = group_of_cubies
+        }
+
+        adjacent_cubies.rotate_left(rotation);
+
+        for (i, x) in adjacent.iter().enumerate() {
+            for (j, &k) in x.1.iter().enumerate() {
+                self.state[x.0][k] = adjacent_cubies[i][j]
+            }
+        }
+    }
+
+    fn input_moves(&mut self, moves: &str) {
+        let moves = moves.to_uppercase();
+        let moves_list: Vec<&str> = moves.split_whitespace().collect();
+
+        for x in moves_list {
+            let face: Option<Faces> = match x.chars().next() {
+                Some('F') => Some(Faces::Blue),
+                Some('R') => Some(Faces::Red),
+                Some('L') => Some(Faces::Green),
+                Some('D') => Some(Faces::Yellow),
+                _ => None,
+            };
+
+            match face {
+                Some(face_enum) => {
+                    let magnitude: u32 = match x.chars().nth(1) {
+                        Some('\'') => 2,
+                        Some('2') => 2,
+                        _ => 1
+                    };
+        
+                    self.rotate(face_enum, magnitude);
+                },
+                None => {break;}
+            }
+        }
+    }
+
+    fn print(&self) {
+        let mut print_state: Vec<Vec<ColoredString>> = vec![vec![" ".white(); 32]; 11];
+        let print_map: HashMap<_, _> = vec![
+            ((0, 0),(4, 11)), ((0, 1),(3, 14)), ((0, 2),(2, 13)), ((0, 3),(2, 15)), ((0, 4),(0, 15)), ((0, 5),(2, 17)), ((0, 6),(3, 16)), ((0, 7),(4, 19)), ((0, 8),(4, 15)), 
+            ((1, 0),(4, 23)), ((1, 1),(2, 24)), ((1, 2),(2, 21)), ((1, 3),(1, 23)), ((1, 4),(0, 19)), ((1, 5),(0, 24)), ((1, 6),(1, 26)), ((1, 7),(0, 30)), ((1, 8),(2, 28)), 
+            ((2, 0),(0, 0)), ((2, 1),(1, 5)), ((2, 2),(0, 6)), ((2, 3),(1, 8)), ((2, 4),(0, 11)), ((2, 5),(2, 9)), ((2, 6),(2, 7)), ((2, 7),(4, 7)), ((2, 8),(2, 4)), 
+            ((3, 0),(6, 11)), ((3, 1),(7, 14)), ((3, 2),(6, 15)), ((3, 3),(7, 16)), ((3, 4),(6, 19)), ((3, 5),(8, 17)), ((3, 6),(8, 15)), ((3, 7),(10, 15)), ((3, 8),(8, 13))].into_iter().collect();
+
+        for i in 0..4 {
+            for j in 0..9 {
+                let (x, y) = print_map[&(i, j)];
+                print_state[x][y] = match self.state[i][j] {1 => "B".blue(), 3 => "G".green(), 4 => "R".red(), 5 => "Y".yellow(), _ => " ".white()}
+            }
+        }
+
+        for row in print_state {
+            for cell in row {
+                print!("{}", cell);
+            }
+            println!();
+        }
+    }
+}
+
 pub enum PuzzleType {
     RubiksCube(RubiksCube),
     RubiksCube2x2(RubiksCube2x2),
+    Pyraminx(Pyraminx),
 }
 
 impl PuzzleType {
@@ -217,6 +345,7 @@ impl PuzzleType {
         match self {
             PuzzleType::RubiksCube(cube) => cube.is_solved(),
             PuzzleType::RubiksCube2x2(cube) => cube.is_solved(),
+            PuzzleType::Pyraminx(pyraminx) => pyraminx.is_solved()
         }
     }
 
@@ -224,6 +353,7 @@ impl PuzzleType {
         match self {
             PuzzleType::RubiksCube(cube) => cube.print(),
             PuzzleType::RubiksCube2x2(cube) => cube.print(),
+            PuzzleType::Pyraminx(pyraminx) => pyraminx.print()
         }
     }
 
@@ -231,26 +361,27 @@ impl PuzzleType {
         match self {
             PuzzleType::RubiksCube(cube) => cube.input_moves(moves),
             PuzzleType::RubiksCube2x2(cube) => cube.input_moves(moves),
+            PuzzleType::Pyraminx(pyraminx) => pyraminx.input_moves(moves)
         }
     }
 }
 
 pub fn main() {
     let mut choice = String::new();
-    print!("Enter 2 for a 2x2 and 3 for a 3x3: ");
+    print!("Enter 2 for a 2x2 and 3 for a 3x3 or anything else for a Pyraminx: ");
     io::stdout().flush().unwrap();
     io::stdin().read_line(&mut choice).expect("Failed to read choice");
-    choice = choice.trim().to_string();
+    let option: &str = choice.trim();
 
-    let mut cube = if choice == "2" {
-        PuzzleType::RubiksCube2x2(RubiksCube2x2::new())
-    } else {
-        PuzzleType::RubiksCube(RubiksCube::new())
+    let mut cube = match option {
+        "2" => PuzzleType::RubiksCube2x2(RubiksCube2x2::new()),
+        "3" => PuzzleType::RubiksCube(RubiksCube::new()),
+        _ => PuzzleType::Pyraminx(Pyraminx::new())
     };
 
     let scramble = scramble_generator::main(50);
     println!("{scramble}");
-    cube.input_moves(scramble.as_str());
+    // cube.input_moves(scramble.as_str());
     cube.print();
 
     loop {
@@ -263,6 +394,8 @@ pub fn main() {
 
         if moves == "c" {
             println!("{}", cube.is_solved())
+        } else if moves == "p" {
+            cube.print();
         } else {
             cube.input_moves(&moves);
             cube.print();
