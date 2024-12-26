@@ -3,6 +3,7 @@ pub mod rubiks_cube_2x2;
 pub mod rubiks_cube;
 pub mod megaminx;
 pub mod skewb;
+pub mod ivy;
 
 pub enum Faces {
     White,
@@ -38,7 +39,8 @@ pub enum PuzzleType {
     RubiksCube2x2(rubiks_cube_2x2::RubiksCube2x2),
     Skewb(skewb::Skewb),
     Pyraminx(pyraminx::Pyraminx),
-    Megaminx(megaminx::Megaminx)
+    Megaminx(megaminx::Megaminx),
+    Ivy(ivy::Ivy)
 }
 
 impl PuzzleType {
@@ -48,7 +50,8 @@ impl PuzzleType {
             PuzzleType::RubiksCube2x2(cube) => cube.is_solved(),
             PuzzleType::Skewb(cube) => cube.is_solved(),
             PuzzleType::Pyraminx(pyraminx) => pyraminx.is_solved(),
-            PuzzleType::Megaminx(megaminx) => megaminx.is_solved()
+            PuzzleType::Megaminx(megaminx) => megaminx.is_solved(),
+            PuzzleType::Ivy(cube) => cube.is_solved()
         }
     }
 
@@ -58,7 +61,8 @@ impl PuzzleType {
             PuzzleType::RubiksCube2x2(cube) => cube.print(),
             PuzzleType::Skewb(cube) => cube.print(),
             PuzzleType::Pyraminx(pyraminx) => pyraminx.print(),
-            PuzzleType::Megaminx(megaminx) => megaminx.print()
+            PuzzleType::Megaminx(megaminx) => megaminx.print(),
+            PuzzleType::Ivy(cube) => cube.print()
         }
     }
 
@@ -68,7 +72,8 @@ impl PuzzleType {
             PuzzleType::RubiksCube2x2(cube) => cube.return_state(),
             PuzzleType::Skewb(cube) => cube.return_state(),
             PuzzleType::Pyraminx(pyraminx) => pyraminx.return_state(),
-            PuzzleType::Megaminx(megaminx) => megaminx.return_state()
+            PuzzleType::Megaminx(megaminx) => megaminx.return_state(),
+            PuzzleType::Ivy(cube) => cube.return_state()
         }
     }
 
@@ -78,7 +83,8 @@ impl PuzzleType {
             PuzzleType::RubiksCube2x2(cube) => cube.input_moves(moves),
             PuzzleType::Skewb(cube) => cube.input_moves(moves),
             PuzzleType::Pyraminx(pyraminx) => pyraminx.input_moves(moves),
-            PuzzleType::Megaminx(megaminx) => megaminx.input_moves(moves)
+            PuzzleType::Megaminx(megaminx) => megaminx.input_moves(moves),
+            PuzzleType::Ivy(cube) => cube.input_moves(moves)
         }
     }
 }

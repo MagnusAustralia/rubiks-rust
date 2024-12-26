@@ -10,6 +10,13 @@ pub enum Faces {
     Yellow,
 }
 
+enum Tips {
+    Top,
+    Right,
+    Left,
+    Back
+}
+
 impl Faces {
     pub fn to_number(&self) -> usize {
         match self {
@@ -88,6 +95,29 @@ impl Pyraminx {
         }
     }
 
+    fn rotate_tip(&mut self, tip: Tips, magnitude: u32) {
+        let rotation = (magnitude % 8) as usize;
+
+        let tips = match tip {
+            Tips::Top => [(0, 4), (1, 4), (2, 4)],
+            Tips::Right => [(0, 7), (3, 4), (1, 0)],
+            Tips::Left => [(0, 0), (2, 7), (3, 0)],
+            Tips::Back => [(1, 7), (3, 7), (2, 0)]
+        };
+
+        let mut adjacent_edges = [0u8;3];
+
+        for (i, x) in tips.iter().enumerate() {
+            adjacent_edges[i] = self.state[x.0][x.1];
+        }
+
+        adjacent_edges.rotate_left(rotation);
+
+        for (i, x) in tips.iter().enumerate() {
+            self.state[x.0][x.1] = adjacent_edges[i];
+        }
+    }
+
     pub fn input_moves(&mut self, moves: &str) {
         let moves = moves.to_uppercase();
         let moves_list: Vec<&str> = moves.split_whitespace().collect();
@@ -101,17 +131,28 @@ impl Pyraminx {
                 _ => None,
             };
 
+            let magnitude: u32 = match x.chars().nth(1) {
+                Some('\'') => 2,
+                Some('2') => 2,
+                _ => 1
+            };
+
             match face {
-                Some(face_enum) => {
-                    let magnitude: u32 = match x.chars().nth(1) {
-                        Some('\'') => 2,
-                        Some('2') => 2,
-                        _ => 1
+                Some(face_enum) => self.rotate(face_enum, magnitude),
+                None => {
+                    let tip: Option<Tips> = match x.chars().next() {
+                        Some('T') => Some(Tips::Top),
+                        Some('E') => Some(Tips::Right),
+                        Some('K') => Some(Tips::Left),
+                        Some('B') => Some(Tips::Back),
+                        _ => None,
                     };
-        
-                    self.rotate(face_enum, magnitude);
-                },
-                None => {break;}
+
+                    match tip {
+                        Some(tip_enum) => self.rotate_tip(tip_enum, magnitude),
+                        None => {break;}
+                    }
+                }
             }
         }
     }

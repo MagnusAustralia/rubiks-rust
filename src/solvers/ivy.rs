@@ -1,21 +1,8 @@
-// Link to Corner Perms
-// Link to Edge Perms
-
-use std::cmp;
 use priority_queue::PriorityQueue;
 use main::PuzzleType;
 
-fn movesTillCornersComplete(cube:PuzzleType) -> u32 {
-    // open the corner perms and return int(m[PermutationIndexer(cube.corners, cube.cornerOrientations)])
-    0
-}
-
-fn movesTillEdgesComplete(cube:PuzzleType) -> u32 {
-    0
-}
-
 fn h(cube:PuzzleType) -> u16 {
-    cmp::max(movesTillCornersComplete(cube), movesTillEdgesComplete(cube))
+    0
 }
 
 const POSSIBLE_MOVES: [[&str;3];6] = [["U ", "U' ", "U2 "],["D ", "D' ", "D2 "],["R ", "R' ", "R2 "],["L ", "L' ", "L2 "],["F ", "F' ", "F2 "],["B ", "B' ", "B2 "]];
@@ -27,7 +14,7 @@ struct Node {
 }
 
 impl Node {
-    fn new(cube, current_move, depth) -> Self {
+    fn new(cube:PuzzleType, current_move:String, depth:u16) -> Self {
         Self {
             cube: cube,
             current_move: current_move,

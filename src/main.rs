@@ -1,79 +1,95 @@
-use crossterm::{
-    cursor,
-    event::{self, Event, KeyCode},
-    execute,
-    terminal::{self, ClearType}
-};
-use std::io::{self, stdout, Write};
+use std::io::{self, stdin, stdout, Write};
+use termion::event::Key;
+use termion::input::TermRead;
+use termion::raw::IntoRawMode;
+use termion::{clear, cursor};
 
 mod models;
-mod corner_database_generator;
+mod db_generators;
 mod scramble_generator;
 
-fn select_puzzle() -> &'static str {
-    let menu: &'static [&str] = &["2x2", "3x3", "Skewb", "Pyraminx", "Megaminx"];
+fn select_option() -> &'static str {
+    let menu: &'static [&str] = &["2x2", "3x3", "Skewb", "Pyraminx", "Megaminx", "Ivy", "gcdb", "gsdb", "gidb", "gpdb"];
     let mut selected = 0;
 
-    terminal::enable_raw_mode().expect("Failed to enable raw mode");
-    let mut stdout = stdout();
-    execute!(stdout, terminal::Clear(ClearType::All), cursor::Hide).expect("Failed to initialize terminal");
+    let stdin = stdin();
+    let mut stdout = stdout().into_raw_mode().unwrap();
 
-    loop {
-        execute!(stdout, terminal::Clear(ClearType::All), cursor::MoveTo(0, 0))
-            .expect("Failed to clear and reset cursor");
+    write!(stdout, "{}", termion::cursor::Hide).unwrap();
 
-        for (i, item) in menu.iter().enumerate() {
-            if i == selected {
-                writeln!(stdout, "> {}", item).expect("Failed to write to stdout");
-            } else {
-                writeln!(stdout, "  {}", item).expect("Failed to write to stdout");
-            }
-        }
-
-        stdout.flush().expect("Failed to flush stdout");
-
-        if let Event::Key(key_event) = event::read().expect("Failed to read input") {
-            match key_event.code {
-                KeyCode::Up => {
-                    if selected > 0 {
-                        selected -= 1;
-                    }
-                }
-                KeyCode::Down => {
-                    if selected < menu.len() - 1 {
-                        selected += 1;
-                    }
-                }
-                KeyCode::Enter => {
-                    execute!(stdout, cursor::Show).expect("Failed to show cursor");
-                    terminal::disable_raw_mode().expect("Failed to disable raw mode");
-                    return menu[selected];
-                }
-                _ => {}
-            }
+    write!(stdout, "{}{}", clear::All, cursor::Goto(1, 1)).unwrap();
+    for (i, option) in menu.iter().enumerate() {
+        if i == selected {
+            write!(stdout, "> {}\n\r", option).unwrap();
+        } else {
+            write!(stdout, "  {}\n\r", option).unwrap();
         }
     }
+    stdout.flush().unwrap();
+
+    for c in stdin.keys() {
+        write!(stdout, "{}{}", clear::All, cursor::Goto(1, 1)).unwrap();
+
+        match c.unwrap() {
+            Key::Up => {
+                if selected > 0 {
+                    selected -= 1;
+                } else {
+                    selected = menu.len() - 1
+                }
+            }
+            Key::Down => {
+                if selected < menu.len() - 1 {
+                    selected += 1;
+                } else {
+                    selected = 0
+                }
+            }
+            Key::Char('\n') => {
+                write!(stdout, "{}You selected: {}\n\r", clear::All, menu[selected]).unwrap();
+                write!(stdout, "{}", cursor::Show).unwrap();
+                return menu[selected];
+            }
+            _ => {}
+        }
+
+        for (i, option) in menu.iter().enumerate() {
+            if i == selected {
+                write!(stdout, "> {}\n\r", option).unwrap();
+            } else {
+                write!(stdout, "  {}\n\r", option).unwrap();
+            }
+        }
+        stdout.flush().unwrap();
+    }
+    write!(stdout, "{}", cursor::Show).unwrap();
+
+    menu[selected]
 }
 
 fn main() {
-    let option = select_puzzle();
-    println!("You selected: {}", option);
+    let option = select_option();
 
     let mut cube = match option {
         "2x2" => models::PuzzleType::RubiksCube2x2(models::rubiks_cube_2x2::RubiksCube2x2::default()),
         "3x3" => models::PuzzleType::RubiksCube(models::rubiks_cube::RubiksCube::default()),
         "Skewb" => models::PuzzleType::Skewb(models::skewb::Skewb::default()),
         "Pyraminx" => models::PuzzleType::Pyraminx(models::pyraminx::Pyraminx::default()),
+        "Ivy" => models::PuzzleType::Ivy(models::ivy::Ivy::default()),
         _ => models::PuzzleType::Megaminx(models::megaminx::Megaminx::default())
     };
 
-    if option == "gcdb" {
-        corner_database_generator::generate_db();
+    match option {
+        "gcdb" => {db_generators::corner_database_generator::generate_db();return;},
+        "gsdb" => {db_generators::skewb_database_generator::generate_db();return;},
+        "gidb" => {db_generators::ivy_database_generator::generate_db();return;},
+        "gpdb" => {db_generators::pyaminx_database_generator::generate_db();return;},
+        _ => {}
     }
 
-    let scramble = scramble_generator::main(50);
+    let scramble = scramble_generator::main(50, &cube);
     println!("{scramble}");
-    // cube.input_moves(scramble.as_str());
+    cube.input_moves(scramble.as_str());
     cube.print();
 
     loop {
